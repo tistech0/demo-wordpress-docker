@@ -2,6 +2,62 @@
 
 Voici un guide simple pour déployer une démo WordPress avec Docker et restaurer des sauvegardes de base de données.
 
+## Prérequis
+
+Avant de commencer, assurez-vous d'avoir installé Docker et Docker Compose sur votre système :
+
+### Installation de Docker et Docker Compose
+
+#### Windows
+1. Téléchargez et installez [Docker Desktop pour Windows](https://www.docker.com/products/docker-desktop)
+2. Suivez les instructions d'installation
+3. Docker Compose est inclus dans Docker Desktop pour Windows
+
+#### macOS
+1. Téléchargez et installez [Docker Desktop pour Mac](https://www.docker.com/products/docker-desktop)
+2. Suivez les instructions d'installation
+3. Docker Compose est inclus dans Docker Desktop pour Mac
+
+#### Linux
+1. Installez Docker Engine :
+   ```bash
+   # Ubuntu/Debian
+   sudo apt update
+   sudo apt install docker.io
+   sudo systemctl enable --now docker
+   
+   # Fedora/CentOS/RHEL
+   sudo dnf install docker
+   sudo systemctl enable --now docker
+   
+   # Arch Linux
+   sudo pacman -S docker
+   sudo systemctl enable --now docker
+   ```
+
+2. Installez Docker Compose :
+   ```bash
+   # Méthode 1 : Utiliser pip (Python)
+   sudo pip install docker-compose
+   
+   # Méthode 2 : Télécharger le binaire
+   sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+   sudo chmod +x /usr/local/bin/docker-compose
+   ```
+
+3. Ajoutez votre utilisateur au groupe docker (optionnel, pour éviter d'utiliser sudo) :
+   ```bash
+   sudo usermod -aG docker $USER
+   # Déconnectez-vous puis reconnectez-vous pour appliquer les changements
+   ```
+
+### Vérification de l'installation
+Vérifiez que Docker et Docker Compose sont correctement installés :
+```bash
+docker --version
+docker-compose --version
+```
+
 ## Installation et configuration
 
 ## 1. Démarrer l'environnement Docker
@@ -47,8 +103,9 @@ Voici un guide simple pour déployer une démo WordPress avec Docker et restaure
 
 Vous venez d'installer WordPress avec Docker et de restaurer des sauvegardes pour modifier son contenu automatiquement. Pour arrêter les services :
 ```bash
-docker-compose down
+docker-compose down --volumes
 ```
+
 Cela supprimera également les volumes associés, y compris la base de données.
 Si besoin, relancez-les avec docker-compose up -d. La configuration sera à refaire ou à recharger.
 
