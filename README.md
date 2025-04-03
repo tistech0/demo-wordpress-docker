@@ -103,11 +103,31 @@ docker-compose --version
 
 Vous venez d'installer WordPress avec Docker et de restaurer des sauvegardes pour modifier son contenu automatiquement. Pour arrêter les services :
 ```bash
-docker-compose down --volumes
+docker-compose down
 ```
-
 Cela supprimera également les volumes associés, y compris la base de données.
 Si besoin, relancez-les avec docker-compose up -d. La configuration sera à refaire ou à recharger.
+
+## Remarque importante sur les fichiers WordPress existants
+
+Si vous clonez un dépôt qui contient déjà des fichiers WordPress dans le dossier `./wordpress` (ce qui est souvent le cas lorsque vous travaillez sur un projet existant), suivez ces étapes pour éviter les erreurs :
+
+1. **Ne pas accéder directement à WordPress** après avoir lancé les conteneurs avec `docker-compose up -d`. Vous risquez d'obtenir des erreurs de base de données car :
+   - Les fichiers WordPress contiennent une configuration (`wp-config.php`) qui attend une structure spécifique de la base de données
+   - La base de données nouvelle est vide et ne correspond pas à la configuration
+
+2. **Restaurez d'abord une sauvegarde** de la base de données correspondant à votre version des fichiers :
+   ```bash
+   ./restore_db.sh votre_sauvegarde.sql
+   ```
+
+3. **Puis accédez à WordPress** à l'adresse [http://localhost:8080](http://localhost:8080)
+
+Cette séquence garantit que la base de données correspond aux fichiers WordPress présents, évitant ainsi les erreurs de connexion à la base de données ou d'incohérence entre les tables et les fichiers.
+
+Si vous ne disposez pas d'une sauvegarde correspondante :
+- Vous pouvez soit supprimer le dossier `./wordpress` avant de lancer les conteneurs pour repartir d'une installation propre
+- Soit créer une nouvelle sauvegarde adaptée à votre configuration avec `./save_db.sh` après avoir configuré WordPress manuellement
 
 ## 6. **Accéder aux services**
    - WordPress : http://localhost:8080
@@ -178,6 +198,64 @@ volumes:
   db_data:
 ```
 **Définition du volume** : Crée un volume Docker nommé qui persiste entre les redémarrages.
+
+### Système de conservation des données avec Git
+
+Le projet utilise deux mécanismes différents pour la persistance des données, adaptés à différents cas d'usage avec Git :
+
+#### 1. Montage par bind pour les fichiers WordPress (`./wordpress:/var/www/html`)
+
+```yaml
+volumes:
+  - ./wordpress:/var/www/html
+```
+
+Ce type de montage, appelé "bind mount", permet de :
+- **Synchroniser en temps réel** les fichiers entre le conteneur et votre système de fichiers local
+- **Versionner les fichiers WordPress** avec Git (thèmes, plugins, configurations)
+- **Partager facilement** les modifications de code entre développeurs via Git
+
+**Comportement avec Git :**
+- Les fichiers WordPress seront créés dans le dossier `./wordpress` lors du premier démarrage
+- Le dossier `./wordpress` peut être inclus dans votre dépôt Git (mais nécessite souvent un `.gitignore` adapté)
+- Les développeurs qui clonent le dépôt obtiendront la même structure de fichiers
+- Pour exclure certains fichiers volumineux ou générés automatiquement, ajoutez au `.gitignore` :
+  ```
+  # Ne pas versionner les uploads et caches
+  /wordpress/wp-content/uploads/
+  /wordpress/wp-content/cache/
+  # Ne pas versionner les fichiers de configuration spécifiques
+  /wordpress/wp-config.php
+  ```
+
+#### 2. Volume Docker nommé pour la base de données (`db_data:/var/lib/mysql`)
+
+```yaml
+volumes:
+  - db_data:/var/lib/mysql
+```
+
+Ce type de volume est :
+- **Géré par Docker** et non accessible directement dans votre système de fichiers
+- **Non versionné** par Git (les données sont isolées)
+- **Persistant** entre les redémarrages des conteneurs et même après un `docker-compose down`
+- **Détruit** uniquement lors d'un `docker-compose down -v` ou `docker volume rm db_data`
+
+**Stratégie pour Git :**
+- Les données de la base ne sont pas versionnées directement dans Git (trop volumineuses et binaires)
+- Utilisez plutôt les scripts `save_db.sh` et `restore_db.sh` pour :
+  1. Créer des sauvegardes SQL (dumps) qui peuvent être versionnées dans Git
+  2. Restaurer la base depuis ces sauvegardes
+  3. Partager des "états" de la base entre développeurs via Git
+
+**Workflow recommandé pour le développement collaboratif :**
+1. Créez des dumps SQL pour les étapes importantes du développement
+2. Versionnez ces dumps dans Git (ils sont en texte et peuvent être comparés)
+3. Chaque développeur clone le dépôt Git et exécute `docker-compose up -d`
+4. Restaurez l'état de la base souhaité avec `./restore_db.sh mon_dump.sql`
+5. Les fichiers WordPress sont automatiquement partagés via le bind mount
+
+Cette approche hybride permet d'avoir à la fois les avantages de la version distribuée du code (via Git) et la flexibilité de Docker pour la gestion des environnements de développement.
 
 ### Scripts de sauvegarde et restauration
 

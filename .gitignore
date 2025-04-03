@@ -1,8 +1,4 @@
-wordpress/wp-config.php
-wordpress/wp-content/uploads/
-wordpress/wp-content/cache/
-wordpress/wp-content/upgrade/
-wordpress/wp-content/backup/
 db_data/
 *.sql
 !EXAMPLE*.sql
+wordpress/
